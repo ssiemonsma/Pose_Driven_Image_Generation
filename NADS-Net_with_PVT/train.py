@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from dataset_generator import Dataset_Generator_Aisin
-from model import NADS_Net
+from NADS_Net_model import NADS_Net
 from tqdm import tqdm
 import numpy as np
 

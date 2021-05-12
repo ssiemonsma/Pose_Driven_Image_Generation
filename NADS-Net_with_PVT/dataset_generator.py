@@ -2,8 +2,6 @@ import h5py
 import json
 import numpy as np
 import cv2
-from py_rmpe_transformer import Transformer, AugmentSelection
-from py_rmpe_heatmapper import Heatmapper
 from torchvision import transforms
 import random
 from collections import defaultdict
@@ -313,123 +311,6 @@ class Dataset_Generator_Aisin():
 
     def __len__(self):
         return len(self.image_ids)
-
-
-class Dataset_Generator_MS_COCO():
-    def __init__(self, global_config, config, using_Aisin_output_format, include_background_output, augment=True):
-        self.global_config = global_config
-        self.config = config
-        self.include_background_output = include_background_output
-        self.using_Aisin_output_format = using_Aisin_output_format
-        self.augment = augment
-
-        self.h5_filename = config.source()
-        self.h5 = h5py.File(self.h5_filename, "r")
-
-        self.dataset = self.h5['dataset']
-        self.images = self.h5['images']
-        self.masks = self.h5['masks']
-
-        self.heatmapper = Heatmapper(global_config)
-        self.transformer = Transformer(global_config)
-
-        self.keys = list(self.dataset.keys())
-
-        self.preprocess = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-
-        self.Aisin_keypoint_indices = [4, 3, 2, 1, 5, 6, 7, 8, 11]
-        self.Aisin_PAF_indices = [12, 13, 14, 15, 16, 17, 20, 21, 22, 23, 24, 25, 0, 1, 6, 7]
-
-    def read_data(self, key):
-        entry = self.dataset[key]
-
-        assert 'meta' in entry.attrs, "No 'meta' attribute in .h5 file. Did you generate .h5 with new code?"
-
-        meta = json.loads(entry[()])
-        debug = json.loads(entry.attrs['meta'])
-        meta = self.config.convert(meta, self.global_config)
-
-        image = self.images[meta['image']][()]
-        mask_miss = None
-
-        if len(image.shape)==2 and image.shape[1]==1:
-            image = cv2.imdecode(image, flags=-1)
-
-        if image.shape[2]>3:
-            mask_miss = image[:, :, 3]
-            image = image[:, :, 0:3]
-
-        if mask_miss is None:
-            if self.masks is not None:
-                mask_miss = self.masks[meta['image']][()]
-                if len(mask_miss.shape) == 2 and mask_miss.shape[1]==1:
-                    mask_miss = cv2.imdecode(mask_miss, flags = -1)
-
-        if mask_miss is None:
-            mask_miss = np.full((image.shape[0], image.shape[1]), fill_value=255, dtype=np.uint8)
-
-        return image, mask_miss, meta, debug
-
-    def convert_to_Aisin_format(self, keypoint_heatmap_labels, PAF_labels, keypoint_heatmap_masks, PAF_masks):
-        keypoint_heatmap_labels = keypoint_heatmap_labels[:,:,self.Aisin_keypoint_indices]
-        keypoint_heatmap_masks = keypoint_heatmap_masks[:,:,self.Aisin_keypoint_indices]
-
-        if self.include_background_output:
-            background = 1 - np.amax(keypoint_heatmap_labels, axis=2)
-            keypoint_heatmap_labels = np.concatenate([keypoint_heatmap_labels, background[..., np.newaxis]], axis=2)
-
-            background_mask = np.ones((96, 96, 1))
-            keypoint_heatmap_masks = np.concatenate([keypoint_heatmap_masks, background_mask], axis=2)
-
-        PAF_labels = PAF_labels[:,:,self.Aisin_PAF_indices]
-        PAF_masks = PAF_masks[:,:,self.Aisin_PAF_indices]
-
-        return keypoint_heatmap_labels, PAF_labels, keypoint_heatmap_masks, PAF_masks
-
-    def __getitem__(self, index):
-        image, mask, meta, debug = self.read_data(self.keys[index])
-
-        # Data augmentation
-        assert mask.dtype == np.uint8
-        image = self.preprocess(np.flip(image, 2)/255).numpy()
-        image = np.rollaxis(image, 0, 3)
-        image, mask, meta = self.transformer.transform(image, mask, meta, aug=None if self.augment else AugmentSelection.unrandom())
-        assert mask.dtype == np.float
-
-        # We need a layered mask on next stage
-        mask = self.config.convert_mask(mask, self.global_config, joints=meta['joints'])
-
-        # Create keypoint heatmaps and PAFs
-        labels = self.heatmapper.create_heatmaps(meta['joints'], mask)
-
-        keypoint_heatmap_masks = mask[:, :, self.global_config.paf_layers:]
-        PAF_masks = mask[:, :, :self.global_config.paf_layers]
-
-        keypoint_heatmap_labels = labels[:, :, self.global_config.paf_layers:]
-        PAF_labels = labels[:, :, :self.global_config.paf_layers]
-
-        if self.using_Aisin_output_format:
-            # Eliminate keypoints and PAF layers not present in Aisin dataset
-            keypoint_heatmap_labels, PAF_labels, keypoint_heatmap_masks, PAF_masks = self.convert_to_Aisin_format(keypoint_heatmap_labels, PAF_labels, keypoint_heatmap_masks, PAF_masks)
-
-        # Move the channel dimension to the correct PyTorch position
-        keypoint_heatmap_masks, PAF_masks, keypoint_heatmap_labels, PAF_labels = list(map(lambda x: np.rollaxis(x, 2), [keypoint_heatmap_masks, PAF_masks, keypoint_heatmap_labels, PAF_labels]))
-
-        image = image.astype(np.float32)
-        image = np.rollaxis(image, 2, 0)
-
-        return image, keypoint_heatmap_masks, PAF_masks, keypoint_heatmap_labels, PAF_labels
-
-    def __len__(self):
-        return len(self.keys)
-
-    def __del__(self):
-        if 'h5' in vars(self):
-            self.h5.close()
-
 
 class CanonicalConfig:
     def __init__(self):

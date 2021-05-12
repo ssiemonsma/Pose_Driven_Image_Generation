@@ -1,0 +1,120 @@
+import numpy as np
+from math import sqrt, isnan
+
+class Heatmapper:
+    def __init__(self, config):
+        self.config = config
+        sigma = config.transform_params.sigma
+        thre = config.transform_params.paf_thre
+
+        self.double_sigma2 = 2 * sigma * sigma
+        self.thre = thre
+
+        stride = self.config.stride
+        width = self.config.width//stride
+        height = self.config.height//stride
+
+        # this is coordinates of centers of bigger grid
+        self.grid_x = np.arange(width)*stride + stride/2-0.5
+        self.grid_y = np.arange(height)*stride + stride/2-0.5
+
+        self.Y, self.X = np.mgrid[0:self.config.height:stride, 0:self.config.width:stride]
+
+    def create_heatmaps(self, joints, mask):
+        heatmaps = np.zeros(self.config.parts_shape, dtype=np.float)
+        self.put_joints(heatmaps, joints)
+        sl = slice(self.config.heat_start, self.config.heat_start + self.config.heat_layers)
+        heatmaps[:,:,self.config.bkg_start] = 1. - np.amax(heatmaps[:,:,sl], axis=2)
+        self.put_limbs(heatmaps, joints)
+        heatmaps *= mask
+
+        return heatmaps
+
+    def put_gaussian_maps(self, heatmaps, layer, joints):
+        for i in range(joints.shape[0]):
+            exp_x = np.exp(-(self.grid_x-joints[i,0])**2/self.double_sigma2)
+            exp_y = np.exp(-(self.grid_y-joints[i,1])**2/self.double_sigma2)
+            exp = np.outer(exp_y, exp_x)
+            heatmaps[:, :, self.config.heat_start + layer] = np.maximum(heatmaps[:, :, self.config.heat_start + layer], exp)
+
+    def put_joints(self, heatmaps, joints):
+        for i in range(self.config.num_parts):
+            visible = joints[:,i,2] < 2
+            self.put_gaussian_maps(heatmaps, i, joints[visible, i, 0:2])
+
+    def put_vector_maps(self, heatmaps, layerX, layerY, joint_from, joint_to):
+        count = np.zeros(heatmaps.shape[:-1], dtype=np.int)
+
+        for i in range(joint_from.shape[0]):
+            (x1, y1) = joint_from[i]
+            (x2, y2) = joint_to[i]
+
+            dx = x2-x1
+            dy = y2-y1
+            dnorm = sqrt(dx*dx + dy*dy)
+
+            if dnorm==0:  # we get nan here sometimes, it's kills NN
+                # print("Parts are too close to each other. Length is zero. Skipping")
+                continue
+
+            dx = dx / dnorm
+            dy = dy / dnorm
+
+            assert not isnan(dx) and not isnan(dy), "dnorm is zero, wtf"
+
+            min_sx, max_sx = (x1, x2) if x1 < x2 else (x2, x1)
+            min_sy, max_sy = (y1, y2) if y1 < y2 else (y2, y1)
+
+            min_sx = int(round((min_sx - self.thre) / self.config.stride))
+            min_sy = int(round((min_sy - self.thre) / self.config.stride))
+            max_sx = int(round((max_sx + self.thre) / self.config.stride))
+            max_sy = int(round((max_sy + self.thre) / self.config.stride))
+
+            if max_sy < 0:
+                continue
+
+            if max_sx < 0:
+                continue
+
+            if min_sx < 0:
+                min_sx = 0
+
+            if min_sy < 0:
+                min_sy = 0
+
+            slice_x = slice(min_sx, max_sx) # + 1     this mask is not only speed up but crops paf really. This copied from original code
+            slice_y = slice(min_sy, max_sy) # + 1     int g_y = min_y; g_y < max_y; g_y++ -- note strict <
+
+            dist = distances(self.X[slice_y,slice_x], self.Y[slice_y,slice_x], x1, y1, x2, y2)
+            dist = dist <= self.thre
+
+
+            heatmaps[slice_y, slice_x, layerX][dist] = (dist * dx)[dist]  # += dist * dx
+            heatmaps[slice_y, slice_x, layerY][dist] = (dist * dy)[dist]  # += dist * dy
+            count[slice_y, slice_x][dist] += 1
+
+    def put_limbs(self, heatmaps, joints):
+        for (i,(fr,to)) in enumerate(self.config.limbs_conn):
+            visible_from = joints[:,fr,2] < 2
+            visible_to = joints[:,to, 2] < 2
+            visible = visible_from & visible_to
+            layerX, layerY = (self.config.paf_start + i*2, self.config.paf_start + i*2 + 1)
+            self.put_vector_maps(heatmaps, layerX, layerY, joints[visible, fr, 0:2], joints[visible, to, 0:2])
+
+def distances(X, Y, x1, y1, x2, y2):
+    xD = (x2-x1)
+    yD = (y2-y1)
+    norm2 = sqrt(xD**2 + yD**2)
+    dist = xD*(y1-Y)-(x1-X)*yD
+    dist /= norm2
+
+    return np.abs(dist)
+
+def test():
+    hm = Heatmapper()
+    d = distances(hm.X, hm.Y, 100, 100, 50, 150)
+    print(d < 8.)
+
+if __name__ == "__main__":
+    np.set_printoptions(precision=1, linewidth=1000, suppress=True, threshold=100000)
+    test()

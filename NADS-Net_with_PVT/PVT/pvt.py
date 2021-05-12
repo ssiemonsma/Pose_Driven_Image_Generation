@@ -323,7 +323,6 @@ def pvt_tiny(pretrained=False, **kwargs):
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1],
         **kwargs)
-    model.load_state_dict(torch.load('pvt_tiny.pth'), strict=False)
     model.default_cfg = _cfg()
 
     return model

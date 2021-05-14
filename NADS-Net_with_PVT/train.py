@@ -18,6 +18,18 @@ import sys
 # We need to use the first GPU for the generator and the second for NADS-Net
 os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
 
+# Copy over pretrained GAN weights, if continuing training
+if not os.path.exists('./checkpoints/NADS_Net_dataset/latest_net_G.pth'):
+    if os.path.exists('../Data_and_Pretrained_Weights/Pretrained_Weights/latest_net_G.pth'):
+        copyfile('../Data_and_Pretrained_Weights/Pretrained_Weights/latest_net_G.pth', './checkpoints/NADS_Net_dataset/latest_net_G.pth')
+    else:
+        sys.exit('Please download the folder Data_and_Pretrained_Weights from OneDrive first and place it at the same level as GAN and NADS-Net_with_PVT.')
+if not os.path.exists('./checkpoints/NADS_Net_dataset/latest_net_D.pth'):
+    if os.path.exists('../Data_and_Pretrained_Weights/Pretrained_Weights/latest_net_D.pth'):
+        copyfile('../Data_and_Pretrained_Weights/Pretrained_Weights/latest_net_D.pth', './checkpoints/NADS_Net_dataset/latest_net_D.pth')
+    else:
+        sys.exit('Please download the folder Data_and_Pretrained_Weights from OneDrive first and place it at the same level as GAN and NADS-Net_with_PVT.')
+
 # Instantiate the Generator
 # We're not actually training, but running the generator can be facilitated by its trainer
 generator = GAN_Trainer(get_gan_options(), None)

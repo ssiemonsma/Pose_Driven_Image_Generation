@@ -43,14 +43,14 @@ class GAN_Model(torch.nn.Module):
     # of deep networks. We used this approach since DataParallel module
     # can't parallelize custom functions, we branch to different
     # routines based on |mode|.
-    def forward(self, data, mode):
+    def forward(self, data, mode, no_losses=False):
         # input_semantics, real_image = self.preprocess_input(data)
         input_semantics = data['input_semantics']
         real_image = data['image']
 
         if mode == 'generator':
             g_loss, generated = self.compute_generator_loss(
-                input_semantics, real_image)
+                input_semantics, real_image, no_losses=no_losses)
             return g_loss, generated
         elif mode == 'discriminator':
             d_loss = self.compute_discriminator_loss(
@@ -98,41 +98,42 @@ class GAN_Model(torch.nn.Module):
 
         return netG, netD
 
-    def compute_generator_loss(self, input_semantics, real_image, keypoint_heatmap_labels_small=None, PAF_labels_small=None):
+    def compute_generator_loss(self, input_semantics, real_image, keypoint_heatmap_labels_small=None, PAF_labels_small=None, no_losses=False):
         G_losses = {}
 
         seatbelt_labels = input_semantics[:,-1,:,:]
 
         fake_image = self.generate_fake(input_semantics, real_image)
 
-        keypoint_heatmap, PAFs, seatbelt_segmentation = self.NADS_Net(fake_image)
-        keypoint_heatmap_label, PAFs_label, seatbelt_segmentation_label = self.NADS_Net(real_image)
+        if not no_losses:
+            keypoint_heatmap, PAFs, seatbelt_segmentation = self.NADS_Net(fake_image)
+            keypoint_heatmap_label, PAFs_label, seatbelt_segmentation_label = self.NADS_Net(real_image)
 
-        G_losses['keypoint_heatmap_MSE_loss'] = MSE_criterion(keypoint_heatmap, keypoint_heatmap_label)*100
-        G_losses['PAF_MSE_loss'] = MSE_criterion(PAFs, PAFs_label)*100
-        G_losses['seatbelt_dice_BCE_loss'] = DiceBCE_criterion(seatbelt_segmentation.squeeze(), seatbelt_segmentation_label.squeeze())
+            G_losses['keypoint_heatmap_MSE_loss'] = MSE_criterion(keypoint_heatmap, keypoint_heatmap_label)*self.opt.lambda_keypoint
+            G_losses['PAF_MSE_loss'] = MSE_criterion(PAFs, PAFs_label)*self.opt.lambda_paf
+            G_losses['seatbelt_dice_BCE_loss'] = DiceBCE_criterion(seatbelt_segmentation.squeeze(), seatbelt_segmentation_label.squeeze())*self.opt.lambda_seatbelt
 
-        pred_fake, pred_real = self.discriminate(
-            input_semantics, fake_image, real_image)
+            pred_fake, pred_real = self.discriminate(
+                input_semantics, fake_image, real_image)
 
-        G_losses['GAN'] = self.criterionGAN(pred_fake, True,
-                                            for_discriminator=False)
+            G_losses['GAN'] = self.criterionGAN(pred_fake, True,
+                                                for_discriminator=False)
 
-        if not self.opt.no_ganFeat_loss:
-            num_D = len(pred_fake)
-            GAN_Feat_loss = self.FloatTensor(1).fill_(0)
-            for i in range(num_D):  # for each discriminator
-                # last output is the final prediction, so we exclude it
-                num_intermediate_outputs = len(pred_fake[i]) - 1
-                for j in range(num_intermediate_outputs):  # for each layer output
-                    unweighted_loss = self.criterionFeat(
-                        pred_fake[i][j], pred_real[i][j].detach())
-                    GAN_Feat_loss += unweighted_loss * self.opt.lambda_feat / num_D
-            G_losses['GAN_Feat'] = GAN_Feat_loss
+            if not self.opt.no_ganFeat_loss:
+                num_D = len(pred_fake)
+                GAN_Feat_loss = self.FloatTensor(1).fill_(0)
+                for i in range(num_D):  # for each discriminator
+                    # last output is the final prediction, so we exclude it
+                    num_intermediate_outputs = len(pred_fake[i]) - 1
+                    for j in range(num_intermediate_outputs):  # for each layer output
+                        unweighted_loss = self.criterionFeat(
+                            pred_fake[i][j], pred_real[i][j].detach())
+                        GAN_Feat_loss += unweighted_loss * self.opt.lambda_feat / num_D
+                G_losses['GAN_Feat'] = GAN_Feat_loss
 
-        if not self.opt.no_vgg_loss:
-            G_losses['VGG'] = self.criterionVGG(fake_image, real_image) \
-                * self.opt.lambda_vgg
+            if not self.opt.no_vgg_loss:
+                G_losses['VGG'] = self.criterionVGG(fake_image, real_image) \
+                    * self.opt.lambda_vgg
 
         return G_losses, fake_image
 

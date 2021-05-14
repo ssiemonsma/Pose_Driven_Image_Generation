@@ -21,12 +21,13 @@ def calculate_torso_height(joints):
     return torso_height
 
 class Dataset_Generator_Aisin():
-    def __init__(self, JSON_path, raw_images_path, seatbelt_masks_path, include_background_output, augment=True):
+    def __init__(self, JSON_path, raw_images_path, seatbelt_masks_path, include_background_output, augment=True, arm_augment_type='none'):
         self.JSON_path = JSON_path
         self.raw_images_path = raw_images_path
         self.seatbelt_masks_path = seatbelt_masks_path
         self.include_background_output = include_background_output
         self.augment = augment
+        self.arm_augment_type = arm_augment_type
 
         dataset = json.load(open(JSON_path, 'r'))
 
@@ -209,36 +210,95 @@ class Dataset_Generator_Aisin():
 
         original_joints = joints
         if self.augment:
-            # Augmenting arm positions
-            augment_elbow_max = 0.2
-            augment_wrist_max = 0.2
-            for i, person in enumerate(joints):
-                torso_height = calculate_torso_height(person)
-                # Check if they are in the front row of the car
-                if torso_height > 70:
-                    upper_arm_length = torso_height*.77
-                    forearm_length = upper_arm_length*.9
+            if self.arm_augment_type == 'slightly':
+                # Augmenting arm positions
+                augment_elbow_max = 0.2
+                augment_wrist_max = 0.2
+                for i, person in enumerate(joints):
+                    torso_height = calculate_torso_height(person)
+                    # Check if they are in the front row of the car
+                    if torso_height > 70:
+                        upper_arm_length = torso_height*.77
+                        forearm_length = upper_arm_length*.9
 
-                    # Augment right elbow
-                    if person[1] is not None:
-                        x_aug = np.round(np.random.uniform(-augment_elbow_max*upper_arm_length/2, augment_elbow_max*upper_arm_length/2))
-                        y_aug = np.round(np.random.uniform(-augment_elbow_max*upper_arm_length/2, augment_elbow_max*upper_arm_length/2))
-                        joints[i][1] = (person[1][0] + x_aug, person[1][1] + y_aug)
-                    # Augment right wrist
-                    if person[0] is not None:
-                        x_aug = np.round(np.random.uniform(-augment_wrist_max*forearm_length/2, augment_wrist_max*forearm_length/2))
-                        y_aug = np.round(np.random.uniform(-augment_wrist_max*forearm_length/2, augment_wrist_max*forearm_length/2))
-                        joints[i][0] = (person[0][0] + x_aug, person[0][1] + y_aug)
-                    # Augment left elbow
-                    if person[5] is not None:
-                        x_aug = np.round(np.random.uniform(-augment_elbow_max*upper_arm_length/2, augment_elbow_max*upper_arm_length/2))
-                        y_aug = np.round(np.random.uniform(-augment_elbow_max*upper_arm_length/2, augment_elbow_max*upper_arm_length/2))
-                        joints[i][5] = (person[5][0] + x_aug, person[5][1] + y_aug)
-                    # Augment left wrist
-                    if person[6] is not None:
-                        x_aug = np.round(np.random.uniform(-augment_wrist_max*forearm_length/2, augment_wrist_max*forearm_length/2))
-                        y_aug = np.round(np.random.uniform(-augment_wrist_max*forearm_length/2, augment_wrist_max*forearm_length/2))
-                        joints[i][6] = (person[6][0] + x_aug, person[6][1] + y_aug)
+                        # Augment right elbow
+                        if person[1] is not None:
+                            x_aug = np.round(np.random.uniform(-augment_elbow_max*upper_arm_length/2, augment_elbow_max*upper_arm_length/2))
+                            y_aug = np.round(np.random.uniform(-augment_elbow_max*upper_arm_length/2, augment_elbow_max*upper_arm_length/2))
+                            joints[i][1] = (person[1][0] + x_aug, person[1][1] + y_aug)
+                        # Augment right wrist
+                        if person[0] is not None:
+                            x_aug = np.round(np.random.uniform(-augment_wrist_max*forearm_length/2, augment_wrist_max*forearm_length/2))
+                            y_aug = np.round(np.random.uniform(-augment_wrist_max*forearm_length/2, augment_wrist_max*forearm_length/2))
+                            joints[i][0] = (person[0][0] + x_aug, person[0][1] + y_aug)
+                        # Augment left elbow
+                        if person[5] is not None:
+                            x_aug = np.round(np.random.uniform(-augment_elbow_max*upper_arm_length/2, augment_elbow_max*upper_arm_length/2))
+                            y_aug = np.round(np.random.uniform(-augment_elbow_max*upper_arm_length/2, augment_elbow_max*upper_arm_length/2))
+                            joints[i][5] = (person[5][0] + x_aug, person[5][1] + y_aug)
+                        # Augment left wrist
+                        if person[6] is not None:
+                            x_aug = np.round(np.random.uniform(-augment_wrist_max*forearm_length/2, augment_wrist_max*forearm_length/2))
+                            y_aug = np.round(np.random.uniform(-augment_wrist_max*forearm_length/2, augment_wrist_max*forearm_length/2))
+                            joints[i][6] = (person[6][0] + x_aug, person[6][1] + y_aug)
+            elif self.arm_augment_type == 'highly':
+                # Augmenting arm positions
+                for i, person in enumerate(joints):
+                    torso_height = calculate_torso_height(person)
+                    # Check if they are in the front row of the car
+                    if torso_height > 70:
+                        upper_arm_length = torso_height * .77
+                        forearm_length = upper_arm_length * .9
+
+                        if person[2] is not None:
+                            # Augment right elbow
+                            direction = np.random.normal(size=2)
+                            direction = direction / np.linalg.norm(direction)
+
+                            length = np.abs(np.clip(np.random.normal(0.7 * upper_arm_length, 0.2 * upper_arm_length),
+                                                    0.1 * upper_arm_length, upper_arm_length))
+                            aug = direction * length
+
+                            new_x = np.round(np.clip(person[2][0] + aug[0], 0, 384))
+                            new_y = np.round(np.clip(person[2][1] + aug[1], 0, 384))
+                            joints[i][1] = (new_x, new_y)
+
+                            # Augment right wrist
+                            direction = np.random.normal(size=2)
+                            direction = direction / np.linalg.norm(direction)
+
+                            length = np.abs(np.clip(np.random.normal(0.7 * forearm_length, 0.2 * forearm_length),
+                                                    0.1 * forearm_length, forearm_length))
+                            aug = direction * length
+
+                            new_x = np.round(np.clip(joints[i][1][0] + aug[0], 0, 384))
+                            new_y = np.round(np.clip(joints[i][1][1] + aug[1], 0, 384))
+                            joints[i][0] = (new_x, new_y)
+
+                        if person[4] is not None:
+                            # Augment left elbow
+                            direction = np.random.normal(size=2)
+                            direction = direction / np.linalg.norm(direction)
+
+                            length = np.abs(np.clip(np.random.normal(0.7 * upper_arm_length, 0.2 * upper_arm_length),
+                                                    0.1 * upper_arm_length, upper_arm_length))
+                            aug = direction * length
+
+                            new_x = np.round(np.clip(person[4][0] + aug[0], 0, 384))
+                            new_y = np.round(np.clip(person[4][1] + aug[1], 0, 384))
+                            joints[i][5] = (new_x, new_y)
+
+                            # Augment left wrist
+                            direction = np.random.normal(size=2)
+                            direction = direction / np.linalg.norm(direction)
+
+                            length = np.abs(np.clip(np.random.normal(0.7 * forearm_length, 0.2 * forearm_length),
+                                                    0.1 * forearm_length, forearm_length))
+                            aug = direction * length
+
+                            new_x = np.round(np.clip(joints[i][5][0] + aug[0], 0, 384))
+                            new_y = np.round(np.clip(joints[i][5][1] + aug[1], 0, 384))
+                            joints[i][6] = (new_x, new_y)
 
         image = open((self.raw_images_path + img_path + '.png'), 'rb').read()
         seatbelt_label = open((self.seatbelt_masks_path + img_path + '.png'), 'rb').read()

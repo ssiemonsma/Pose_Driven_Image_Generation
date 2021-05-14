@@ -11,100 +11,24 @@ import random
 import cv2
 from trainers.gan_trainer import GAN_Trainer
 import os
+from util.get_gan_options import get_gan_options
+from shutil import copyfile
+import sys
 
 # We need to use the first GPU for the generator and the second for NADS-Net
-os.environ["CUDA_VISIBLE_DEVICES"]="6,7"
+os.environ["CUDA_VISIBLE_DEVICES"]="4,5"
 
-##################################################################################
-# Holds Training options
-class Namespace:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+# Instantiate the Generator
+# We're not actually training, but running the generator can be facilitated by its trainer
+generator = GAN_Trainer(get_gan_options(), None)
 
-# Training Options
-opt = Namespace()
-opt.gpu_ids = [0]
-opt.ngf = 64
-opt.crop_size = 256
-opt.display_winsize = 256
-opt.semantic_nc = 26
-opt.num_D = 2
-opt.output_nc = 3
-opt.contain_dontcare_label = False
-opt.save_latest_freq = 500
-opt.print_freq = 1
-opt.display_freq = 1
-opt.continue_train = True
-opt.lr = 0
-opt.D_steps_per_G = 1
-opt.aspect_ratio = 1.0
-opt.batchSize = 1
-opt.beta1 = 0.0
-opt.beta2 = 0.9
-opt.cache_filelist_read =True
-opt.cache_filelist_write=True
-opt.checkpoints_dir='./checkpoints'
-opt.coco_no_portraits=False
-opt.crop_size=256
-opt.dataroot='./datasets/cityscapes/'
-opt.dataset_mode='coco'
-opt.debug=False
-opt.display_winsize=256
-opt.gan_mode='hinge'
-opt.init_type='xavier'
-opt.init_variance=0.02
-opt.isTrain=False
-opt.label_nc=0
-opt.lambda_feat=10.0
-opt.lambda_kld=0.05
-opt.lambda_vgg=10.0
-opt.load_from_opt_file=False
-opt.load_size=286
-opt.max_dataset_size=9223372036854775807
-opt.model='pix2pix'
-opt.nThreads=0
-opt.n_layers_D=4
-opt.name='NADS_Net_dataset'
-opt.ndf=64
-opt.nef=16
-opt.netD='multiscale'
-opt.netD_subarch='n_layer'
-opt.netG='SPADE'
-opt.ngf=64
-opt.niter=50
-opt.niter_decay=0
-opt.no_TTUR=False
-opt.no_flip=False
-opt.no_ganFeat_loss=False
-opt.no_html=False
-opt.no_instance=True
-opt.no_pairing_check=False
-opt.no_vgg_loss=False
-opt.norm_D='spectralinstance'
-opt.norm_E='spectralinstance'
-opt.norm_G='spectralspadesyncbatch3x3'
-opt.num_D=2
-opt.num_upsampling_layers='normal'
-opt.optimizer='adam'
-opt.output_nc=3
-opt.phase='train'
-opt.preprocess_mode='resize_and_crop'
-opt.serial_batches=False
-opt.tf_log=False
-opt.which_epoch='latest'
-opt.z_dim=256
-
-# We're
-generator = GAN_Trainer(opt, None)
-##############################################################################################
-
-filename = 'test3.pth'
-pretrained_filename = 'weights_training_with_tiny_PVT.pth'
-# pretrained_filename = 'test.pth'
-pretrained_segmentation_branch = 'weights_Aisin_with_interpolation_after_with_bcedice.pth'
+# Set a filename for saving NADS-Net weights
+filename = './checkpoints/training_NADS_Net_weights.pth'
 
 # Training Parameters
+arm_augment_type = 'slightly'   # Choose from 'slightly', 'highly', or 'none'
 start_from_pretrained = True
+pretrained_filename = './checkpoints/traditionally_trained_NADS_Net_with_PVT.pth'
 num_training_epochs = 100
 batch_size = 4
 starting_lr = 1e-5
@@ -116,18 +40,26 @@ weight_decay = 5e-7
 num_dataloader_threads = 10
 include_background_output = False
 
+if start_from_pretrained and pretrained_filename == './checkpoints/traditionally_trained_NADS_Net_with_PVT.pth':
+    # Copy over pretrained NADS-Net weights (trained using traditional means)
+    if not os.path.exists('./checkpoints/traditionally_trained_NADS_Net_with_PVT.pth'):
+        if os.path.exists('../Data_and_Pretrained_Weights/Pretrained_Weights/latest_net_G.pth'):
+            copyfile('../Data_and_Pretrained_Weights/Pretrained_Weights/traditionally_trained_NADS_Net_with_PVT.pth', './checkpoints/traditionally_trained_NADS_Net_with_PVT.pth')
+        else:
+            sys.exit('Please download the folder Data_and_Pretrained_Weights from OneDrive first and place it at the same level as GAN and NADS-Net_with_PVT.')
+
 # Instantiate the Network
 device = torch.device("cuda:1")
 net = NADS_Net(True, True, include_background_output).to(device)
 print('Network contains', sum([p.numel() for p in net.parameters()]), 'parameters.')
 
 # Create the Data Loaders
-training_JSON_path = '/localscratch/Users/ssiemons/NADS-Net/Aisin_Dataset/Train_keypoint_Annotations.json'
-validation_JSON_path = '/localscratch/Users/ssiemons/NADS-Net/Aisin_Dataset/Test_keypoint_Annotations.json'
-raw_images_path = '/localscratch/Users/ssiemons/NADS-Net/Aisin_Dataset/Raw_Images/'
-seatbelt_masks_path = '/localscratch/Users/ssiemons/NADS-Net/Aisin_Dataset/Seatbelt_Mask/'
+training_JSON_path = '../Data_and_Pretrained_Weights/NADS_Net_Sample_Data/Train_keypoint_Annotation_sample.json'
+validation_JSON_path = '../Data_and_Pretrained_Weights/NADS_Net_Sample_Data/Train_keypoint_Annotation_sample.json'
+raw_images_path = '../Data_and_Pretrained_Weights/NADS_Net_Sample_Data/Raw_Images/'
+seatbelt_masks_path = '../Data_and_Pretrained_Weights/NADS_Net_Sample_Data/Seatbelt_Mask/'
 
-train_dataset = Dataset_Generator_Aisin(training_JSON_path, raw_images_path, seatbelt_masks_path, include_background_output, augment=True)
+train_dataset = Dataset_Generator_Aisin(training_JSON_path, raw_images_path, seatbelt_masks_path, include_background_output, augment=True, arm_augment_type=arm_augment_type)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=num_dataloader_threads, pin_memory=True, shuffle=True, drop_last=True)
 num_training_samples = len(train_dataset)
 print('Number of training samples = %i' % num_training_samples)

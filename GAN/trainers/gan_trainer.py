@@ -39,6 +39,10 @@ class GAN_Trainer():
         self.g_losses = g_losses
         self.generated = generated
 
+    def run_generator(self, data):
+        _, generated = self.gan_model(data, mode='generator', no_losses=True)
+        return generated
+
     def run_discriminator_one_step(self, data):
         self.optimizer_D.zero_grad()
         d_losses = self.gan_model(data, mode='discriminator')

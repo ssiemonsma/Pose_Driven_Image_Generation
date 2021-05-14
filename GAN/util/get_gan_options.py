@@ -10,8 +10,6 @@ def get_gan_options():
     opt.lambda_seatbelt = 1
     opt.gpu_ids = [0]
     opt.ngf = 64
-    opt.crop_size = 256
-    opt.display_winsize = 256
     opt.semantic_nc = 26
     opt.num_D = 2
     opt.output_nc = 3
@@ -27,13 +25,8 @@ def get_gan_options():
     opt.batchSize = 1
     opt.beta1 = 0.0
     opt.beta2 = 0.9
-    opt.cache_filelist_read =True
-    opt.cache_filelist_write=True
     opt.checkpoints_dir='./checkpoints'
-    opt.coco_no_portraits=False
-    opt.crop_size=256
-    opt.dataroot='./datasets/cityscapes/'
-    opt.dataset_mode='coco'
+    opt.crop_size=384
     opt.debug=False
     opt.display_winsize=256
     opt.gan_mode='hinge'
@@ -45,14 +38,10 @@ def get_gan_options():
     opt.lambda_kld=0.05
     opt.lambda_vgg=10.0
     opt.load_from_opt_file=False
-    opt.load_size=286
-    opt.max_dataset_size=9223372036854775807
-    opt.model='pix2pix'
     opt.nThreads=0
     opt.n_layers_D=4
     opt.name='NADS_Net_dataset'
     opt.ndf=64
-    opt.nef=16
     opt.netD='multiscale'
     opt.netD_subarch='n_layer'
     opt.netG='SPADE'
@@ -60,7 +49,6 @@ def get_gan_options():
     opt.niter=50
     opt.niter_decay=0
     opt.no_TTUR=False
-    opt.no_flip=False
     opt.no_ganFeat_loss=False
     opt.no_html=False
     opt.no_instance=True
@@ -78,6 +66,5 @@ def get_gan_options():
     opt.serial_batches=False
     opt.tf_log=False
     opt.which_epoch='latest'
-    opt.z_dim=256
 
     return opt

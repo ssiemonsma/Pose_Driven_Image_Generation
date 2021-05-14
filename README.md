@@ -10,8 +10,10 @@ A [SPADE](https://arxiv.org/abs/1903.07291) generator was selected with a multi-
 The entire project is implemented in PyTorch.
 
 ## Installation of Dependencies
-(Note: I still need to update requirements.txt before you do this!!!  This will be completed and validated on a fresh virtual environment before the deadline.)  
-This project was validated with Python 3.8.8 on Linux.  All of the project dependencies are located requirements.txt and can be installed with:
+This project was validated with Python 3.8.8 on Linux.  All of the project dependencies are specified in requirements.txt, which includes PyTorch among other required packages.  If Anaconda is installed as your virtual environment manager, you can set up an environment for this project with the following commands:
+> conda create --name pose_driven_image_generation python=3.8  
+> conda activate pose_driven_image_generation
+> conda install cudatoolkit=10.2  
 > pip install -r requirements.txt
 
 ## Hardware Requirements
@@ -63,7 +65,6 @@ When training the GAN, you can weight these various losses by changing their cor
 By default, GAN/train.py is configured with a fixed learning rate of 0.0002, using an Adam optimizer.  While running GAN/train.py, the various training losses will by printed out at a rate dictated by opt.print_freq, which indicates how many batches must pass before an update is printed to the console.  There are additional parameters opt.save_latest_freq and opt.save_epoch_freq, which dictate how often to save the GAN's weights.  The weights are saved in GAN/checkpoints/NADS_NET_dataset/.
 
 In addition, the opt.display_freq dictates how often a set of images are saved for visualization.  These images include: a composite of the 26x384x384 tensor inputted into the generator, the fake generated image, and the real image.  These images are saved in GAN/checkpoints/NADS_NET_dataset/web/images/, and they can be viewed together by opening index.html in the directory above.
-
 
 ### NADS-Net with PVT Backbone
 The PVT backbone of the modified NADS-Net architecure is found in the PVT folders.  This project used the "tiny PVT" for optimal efficiency, which is defined in the pvt_tiny() function in PVT/pvt.py.

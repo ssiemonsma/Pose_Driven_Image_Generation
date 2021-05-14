@@ -4,10 +4,10 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 """
 
 from models.networks.sync_batchnorm import DataParallelWithCallback
-from models.pix2pix_model import Pix2PixModel
+from models.gan_model import GAN_Model
 
 
-class Pix2PixTrainer():
+class GAN_Trainer():
     """
     Trainer creates the model and optimizers, and uses them to
     updates the weights of the network while reporting losses
@@ -16,13 +16,13 @@ class Pix2PixTrainer():
 
     def __init__(self, opt, NADS_Net):
         self.opt = opt
-        self.pix2pix_model = Pix2PixModel(opt, NADS_Net)
+        self.gan_model = GAN_Model(opt, NADS_Net)
         if len(opt.gpu_ids) > 0:
-            self.pix2pix_model = DataParallelWithCallback(self.pix2pix_model,
-                                                          device_ids=opt.gpu_ids)
-            self.pix2pix_model_on_one_gpu = self.pix2pix_model.module
+            self.gan_model = DataParallelWithCallback(self.gan_model,
+                                                      device_ids=opt.gpu_ids)
+            self.pix2pix_model_on_one_gpu = self.gan_model.module
         else:
-            self.pix2pix_model_on_one_gpu = self.pix2pix_model
+            self.pix2pix_model_on_one_gpu = self.gan_model
 
         self.generated = None
         if opt.isTrain:
@@ -32,7 +32,7 @@ class Pix2PixTrainer():
 
     def run_generator_one_step(self, data):
         self.optimizer_G.zero_grad()
-        g_losses, generated = self.pix2pix_model(data, mode='generator')
+        g_losses, generated = self.gan_model(data, mode='generator')
         g_loss = sum(g_losses.values()).mean()
         g_loss.backward()
         self.optimizer_G.step()
@@ -40,12 +40,12 @@ class Pix2PixTrainer():
         self.generated = generated
 
     def run_generator(self, data):
-        _, generated = self.pix2pix_model(data, mode='generator')
+        _, generated = self.gan_model(data, mode='generator', no_losses=True)
         return generated
 
     def run_discriminator_one_step(self, data):
         self.optimizer_D.zero_grad()
-        d_losses = self.pix2pix_model(data, mode='discriminator')
+        d_losses = self.gan_model(data, mode='discriminator')
         d_loss = sum(d_losses.values()).mean()
         d_loss.backward()
         self.optimizer_D.step()

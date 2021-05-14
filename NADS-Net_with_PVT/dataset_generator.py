@@ -21,12 +21,11 @@ def calculate_torso_height(joints):
     return torso_height
 
 class Dataset_Generator_Aisin():
-    def __init__(self, JSON_path, raw_images_path, seatbelt_masks_path, include_background_output, generator_trainer=None, augment=True):
+    def __init__(self, JSON_path, raw_images_path, seatbelt_masks_path, include_background_output, augment=True):
         self.JSON_path = JSON_path
         self.raw_images_path = raw_images_path
         self.seatbelt_masks_path = seatbelt_masks_path
         self.include_background_output = include_background_output
-        self.generator_trainer = generator_trainer
         self.augment = augment
 
         dataset = json.load(open(JSON_path, 'r'))
@@ -208,6 +207,7 @@ class Dataset_Generator_Aisin():
         img_path = self.image_ids[index].replace('\\', '/')
         joints = self.all_joints[index]
 
+        original_joints = joints
         if self.augment:
             # Augmenting arm positions
             augment_elbow_max = 0.2
@@ -264,6 +264,10 @@ class Dataset_Generator_Aisin():
         seatbelt_label = seatbelt_label[:, :, np.newaxis]
 
         if self.augment:
+            keypoint_heatmap_labels_small_noaug = self.create_keypoint_heatmap(10, 96, 96, original_joints, 7.0, stride=4)
+            PAF_labels_small_noaug = self.create_PAF(8, 96, 96, original_joints, 1, stride=4)
+            keypoint_heatmap_labels_small_noaug = keypoint_heatmap_labels_small_noaug[:, :, 0:9]
+
             keypoint_heatmap_labels = self.create_keypoint_heatmap(10, 384, 384, joints, 7.0, stride=1)
             PAF_labels = self.create_PAF(8, 384, 384, joints, 1, stride=1)
             keypoint_heatmap_labels_small = self.create_keypoint_heatmap(10, 96, 96, joints, 7.0, stride=4)
@@ -273,12 +277,9 @@ class Dataset_Generator_Aisin():
             keypoint_heatmap_labels = self.create_keypoint_heatmap(10, 96, 96, joints, 7.0, stride=4)
             PAF_labels = self.create_PAF(8, 96, 96, joints, 1, stride=4)
 
-        # if self.augment:
-        #     image, keypoint_heatmap_labels, PAF_labels, seatbelt_label = self.augment_maps(image, keypoint_heatmap_labels, PAF_labels, seatbelt_label)
-
         # Move the channel dimension to the correct PyTorch position
         if self.augment:
-            image, keypoint_heatmap_labels, PAF_labels, keypoint_heatmap_labels_small, PAF_labels_small = list(map(lambda x: np.rollaxis(x, 2), [image, keypoint_heatmap_labels, PAF_labels, keypoint_heatmap_labels_small, PAF_labels_small]))
+            image, keypoint_heatmap_labels, PAF_labels, keypoint_heatmap_labels_small, PAF_labels_small, keypoint_heatmap_labels_small_noaug, PAF_labels_small_noaug = list(map(lambda x: np.rollaxis(x, 2), [image, keypoint_heatmap_labels, PAF_labels, keypoint_heatmap_labels_small, PAF_labels_small, keypoint_heatmap_labels_small_noaug, PAF_labels_small_noaug]))
         else:
             image, keypoint_heatmap_labels, PAF_labels = list(map(lambda x: np.rollaxis(x, 2), [image, keypoint_heatmap_labels, PAF_labels]))
 
@@ -290,22 +291,8 @@ class Dataset_Generator_Aisin():
         if not self.include_background_output:
             keypoint_heatmap_labels = keypoint_heatmap_labels[:9,:,:]
 
-        # if self.augment:
-        #     data = {}
-        #
-        #     seatbelt_label = np.squeeze(seatbelt_label)
-        #     seatbelt_label = seatbelt_label[np.newaxis, np.newaxis, ...]
-        #
-        #     data['label'] = torch.cat((torch.Tensor(keypoint_heatmap_labels[np.newaxis,...]), torch.Tensor(PAF_labels[np.newaxis,...]), torch.Tensor(seatbelt_label)), dim=1).type(torch.FloatTensor)
-        #     # data['label'] = keypoint_heatmap_labels[:,0:1,:,:]
-        #     data['image'] = image
-        #     data['instance'] = torch.Tensor([0])
-        #     data['path'] = 'fake_path'
-        #
-        #     image = self.generator_trainer.run_generator(data)
-
         if self.augment:
-            return image, keypoint_heatmap_labels, PAF_labels, seatbelt_label, keypoint_heatmap_labels_small, PAF_labels_small
+            return image, keypoint_heatmap_labels, PAF_labels, seatbelt_label, keypoint_heatmap_labels_small, PAF_labels_small, keypoint_heatmap_labels_small_noaug, PAF_labels_small_noaug
         else:
             return image, self.keypoint_heatmap_mask, self.PAF_mask, keypoint_heatmap_labels, PAF_labels, seatbelt_label
 

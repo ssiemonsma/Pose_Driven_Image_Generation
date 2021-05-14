@@ -112,9 +112,3 @@ class VGGLoss(nn.Module):
         for i in range(len(x_vgg)):
             loss += self.weights[i] * self.criterion(x_vgg[i], y_vgg[i].detach())
         return loss
-
-
-# KL Divergence loss used in VAE with an image encoder
-class KLDLoss(nn.Module):
-    def forward(self, mu, logvar):
-        return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())

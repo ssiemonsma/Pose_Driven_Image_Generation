@@ -10,7 +10,7 @@ A [SPADE](https://arxiv.org/abs/1903.07291) generator was selected with a multi-
 The entire project is implemented in PyTorch.
 
 ## Installation of Dependencies
-(Note: I still need to update requirements.txt before you do this)  
+(Note: I still need to update requirements.txt before you do this!!!  This will be completed and validated on a fresh virtual environment before the deadline.)  
 This project was validated with Python 3.8.8 on Linux.  All of the project dependencies are located requirements.txt and can be installed with:
 > pip install -r requirements.txt
 

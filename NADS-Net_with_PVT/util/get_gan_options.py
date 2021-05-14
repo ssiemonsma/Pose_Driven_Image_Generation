@@ -21,7 +21,7 @@ def get_gan_options():
     opt.display_freq = 1
     opt.save_epoch_freq = 10
     opt.continue_train = True
-    opt.lr = 0.00002
+    opt.lr = 0.0002
     opt.D_steps_per_G = 1
     opt.aspect_ratio = 1.0
     opt.batchSize = 1

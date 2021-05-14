@@ -215,7 +215,6 @@ class Dataset_Generator_Aisin():
         seatbelt_label = cv2.imdecode(seatbelt_label, cv2.IMREAD_COLOR)
         seatbelt_label = cv2.resize(seatbelt_label, (0, 0), fx=scale_x, fy=scale_y, interpolation=cv2.INTER_CUBIC)
         seatbelt_label = seatbelt_label[:, :, 0]/255.0
-        seatbelt_label = seatbelt_label[:, :, np.newaxis]
 
         keypoint_heatmap_labels = self.create_keypoint_heatmap(10, 384, 384, joints, 7.0, stride=1)
         PAF_labels = self.create_PAF(8, 384, 384, joints, 1, stride=1)

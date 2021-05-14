@@ -89,8 +89,8 @@ if lr_schedule_type == 'fixed':
 elif lr_schedule_type == 'metric-based':
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=lr_gamma, patience=patience, verbose=True, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-10)
 
-# Note that this "MSE" value is calculated as a sum and is normalized by the batch size
-# due to how this loss was calculated in the original NADS-Net code
+# Note that this "MSE" value is calculated as a sum of squared errors (SSE) that is normalized by the batch size
+# due to how this loss was calculated and designated in the original NADS-Net code (which was implemented in TensorFlow).
 def MSE_criterion(input, target, batch_size):
     return nn.MSELoss(reduction='sum')(input, target)/batch_size
 

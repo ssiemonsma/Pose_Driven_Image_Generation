@@ -20,7 +20,7 @@ opt = get_gan_options()
 
 # Customize notable variables
 opt.continue_train = True   # Starting with latest_net_D.pth and latest_net_G.pth weights
-opt.lr = 0.00002            # Learning rate
+opt.lr = 0.0002            # Learning rate
 opt.batchSize = 1
 opt.lambda_feat = 10        # Scales the feature-matching loss
 opt.lambda_vgg = 10         # Scales the VGG loss

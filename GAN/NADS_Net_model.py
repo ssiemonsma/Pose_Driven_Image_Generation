@@ -8,12 +8,6 @@ class FPN(nn.Module):
     def __init__(self, num_channels=256):
         super(FPN, self).__init__()
 
-        # self.lateral_layer_5 = nn.Conv2d(2048, num_channels, kernel_size=1, stride=1, padding=0)
-        # self.lateral_layer_4 = nn.Conv2d(1024, num_channels, kernel_size=1, stride=1, padding=0)
-        # self.lateral_layer_3 = nn.Conv2d(512, num_channels, kernel_size=1, stride=1, padding=0)
-        # self.lateral_layer_2 = nn.Conv2d(256, num_channels, kernel_size=1, stride=1, padding=0)
-        # embed_dims = [64, 128, 256, 512]
-
         self.lateral_layer_5 = nn.Conv2d(512, num_channels, kernel_size=1, stride=1, padding=0)
         self.lateral_layer_4 = nn.Conv2d(320, num_channels, kernel_size=1, stride=1, padding=0)
         self.lateral_layer_3 = nn.Conv2d(128, num_channels, kernel_size=1, stride=1, padding=0)
@@ -29,8 +23,6 @@ class FPN(nn.Module):
         return F.interpolate(source, size=(height, width), mode='nearest')
 
     def forward(self, C2, C3, C4, C5):
-        # No ReLu???
-
         P5 = nn.ReLU(inplace=True)(self.lateral_layer_5(C5))
         P5_upsampled = self._upsample_like(P5, C4)
         P5 = self.output_layer_5(P5)
@@ -142,7 +134,6 @@ class NADS_Net(torch.nn.Module):
             num_keypoints_output_layers = 19
             num_PAF_output_layers = 38
 
-        # self.resnet50_modules = nn.ModuleList(list(resnet50(pretrained=True).children())[:-2]).eval()
         self.FPN = FPN()
         self.PVT = pvt_tiny()
         self.keypoint_heatmap_branch = Map_Branch(num_keypoints_output_layers)
@@ -164,18 +155,8 @@ class NADS_Net(torch.nn.Module):
             self.seatbelt_segmentation_branch.apply(init_weights)
 
     def forward(self, x):
-        # resnet50_outputs = []
-        # for i, model in enumerate(self.resnet50_modules):
-        #     x = model(x)
-        #     if i in [4, 5, 6, 7]:
-        #         resnet50_outputs.append(x)
-        # C2, C3, C4, C5 = resnet50_outputs
-        #
-        # P2, P3, P4, P5 = self.FPN(C2, C3, C4, C5)
-
         C2, C3, C4, C5 = self.PVT(x)
         P2, P3, P4, P5 = self.FPN(C2, C3, C4, C5)
-
 
         keypoint_heatmaps = self.keypoint_heatmap_branch(P2, P3, P4, P5)
         PAFs = self.PAF_branch(P2, P3, P4, P5)

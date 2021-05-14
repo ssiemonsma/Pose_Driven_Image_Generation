@@ -8,25 +8,20 @@ from NADS_Net_model import NADS_Net
 from tqdm import tqdm
 import numpy as np
 
-import sys
-from options.train_options import TrainOptions
-from trainers.pix2pix_trainer import Pix2PixTrainer
+from trainers.gan_trainer import GAN_Trainer
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"]="6,7"
 
 ##################################################################################
-sys.argv = ["train.py", "--name", "label2city_512p", "--label_nc", "0", "--no_instance", "--netG", "SPADE"]
-opt = TrainOptions().parse()
-# parser = Pix2pixDataset.modify_commandline_options(parser, is_train)
-# parser.set_defaults(preprocess_mode='resize_and_crop')
-# load_size = 286 if is_train else 256
-# parser.set_defaults(load_size=load_size)
-# parser.set_defaults(crop_size=256)
-# parser.set_defaults(display_winsize=256)
-# parser.set_defaults(label_nc=13)
-# parser.set_defaults(contain_dontcare_label=False)
-opt.gpu_ids = [1]
+# Holds Training options
+class Namespace:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+# Training Options
+opt = Namespace()
+opt.gpu_ids = [0]
 opt.ngf = 64
 opt.crop_size = 256
 opt.display_winsize = 256
@@ -34,13 +29,70 @@ opt.semantic_nc = 26
 opt.num_D = 2
 opt.output_nc = 3
 opt.contain_dontcare_label = False
-# opt.dataset_mode = ''
 opt.save_latest_freq = 500
 opt.print_freq = 1
 opt.display_freq = 1
 opt.continue_train = True
+opt.lr = 0
+opt.D_steps_per_G = 1
+opt.aspect_ratio = 1.0
+opt.batchSize = 1
+opt.beta1 = 0.0
+opt.beta2 = 0.9
+opt.cache_filelist_read =True
+opt.cache_filelist_write=True
+opt.checkpoints_dir='./checkpoints'
+opt.coco_no_portraits=False
+opt.crop_size=256
+opt.dataroot='./datasets/cityscapes/'
+opt.dataset_mode='coco'
+opt.debug=False
+opt.display_winsize=256
+opt.gan_mode='hinge'
+opt.init_type='xavier'
+opt.init_variance=0.02
+opt.isTrain=False
+opt.label_nc=0
+opt.lambda_feat=10.0
+opt.lambda_kld=0.05
+opt.lambda_vgg=10.0
+opt.load_from_opt_file=False
+opt.load_size=286
+opt.max_dataset_size=9223372036854775807
+opt.model='pix2pix'
+opt.nThreads=0
+opt.n_layers_D=4
+opt.name='NADS_Net_dataset'
+opt.ndf=64
+opt.nef=16
+opt.netD='multiscale'
+opt.netD_subarch='n_layer'
+opt.netG='SPADE'
+opt.ngf=64
+opt.niter=50
+opt.niter_decay=0
+opt.no_TTUR=False
+opt.no_flip=False
+opt.no_ganFeat_loss=False
+opt.no_html=False
+opt.no_instance=True
+opt.no_pairing_check=False
+opt.no_vgg_loss=False
+opt.norm_D='spectralinstance'
+opt.norm_E='spectralinstance'
+opt.norm_G='spectralspadesyncbatch3x3'
+opt.num_D=2
+opt.num_upsampling_layers='normal'
+opt.optimizer='adam'
+opt.output_nc=3
+opt.phase='train'
+opt.preprocess_mode='resize_and_crop'
+opt.serial_batches=False
+opt.tf_log=False
+opt.which_epoch='latest'
+opt.z_dim=256
 
-generator_trainer = Pix2PixTrainer(opt, NADS_Net)
+generator_trainer = GAN_Trainer(opt, None)
 
 ##############################################################################################
 
@@ -192,10 +244,8 @@ for epoch in range(num_training_epochs):
         seatbelt_labels = torch.unsqueeze(torch.squeeze(seatbelt_labels), 1)
 
         data = {}
-        data['label'] = torch.cat((keypoint_heatmap_labels[0:batch_size//2,:,:,:], PAF_labels[0:batch_size//2,:,:,:], seatbelt_labels[0:batch_size//2,:,:,:]), dim=1).type(torch.FloatTensor)
+        data['input_semantics'] = torch.cat((keypoint_heatmap_labels[0:batch_size//2,:,:,:], PAF_labels[0:batch_size//2,:,:,:], seatbelt_labels[0:batch_size//2,:,:,:]), dim=1).type(torch.FloatTensor)
         data['image'] = input_images[0:2,:,:,:].type(torch.FloatTensor)
-        data['instance'] = torch.Tensor([0])
-        data['path'] = 'fake_path'
 
         input_images[0:batch_size//2,:,:,:] = generator_trainer.run_generator(data)
 

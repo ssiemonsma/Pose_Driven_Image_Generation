@@ -12,7 +12,7 @@ The entire project is implemented in PyTorch.
 ## Installation of Dependencies
 This project was validated with Python 3.8.8 on Linux.  All of the project dependencies are specified in requirements.txt, which includes PyTorch among other required packages.  If Anaconda is installed as your virtual environment manager, you can set up an environment for this project with the following commands:
 > conda create --name pose_driven_image_generation python=3.8  
-> conda activate pose_driven_image_generation
+> conda activate pose_driven_image_generation  
 > conda install cudatoolkit=10.2  
 > pip install -r requirements.txt
 

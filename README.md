@@ -3,7 +3,7 @@
 ## Overview
 [NADS-Net](https://arxiv.org/abs/1910.03695) was a first-of-its-kind neural network that extracts both poses and seatbelt segmentations from in-vehicle video frames.  It was trained on a proprietary dataset.  Unfortunately, the training dataset is not very large nor diverse, so the network experiences overfitting issue.  To address this issue, this project explored the possibility of using the generator from a GAN to augment the poses of the people present in the training dataset.  If successful, this could serve as a very useful form of data augmentation.
 
-For this project, NADS-Net was modified to have a [Pyramid Visision Transformer (PVT) backbone](https://arxiv.org/abs/2102.12122) in order to make the network smaller and more efficient (due to concerns about GPU memory constaints).
+For this project, NADS-Net was modified to have a [Pyramid Vision Transformer (PVT) backbone](https://arxiv.org/abs/2102.12122) in order to make the network smaller and more efficient (due to concerns about GPU memory constaints).
 
 A [SPADE](https://arxiv.org/abs/1903.07291) generator was selected with a multi-scale patch-gan discriminator.
 

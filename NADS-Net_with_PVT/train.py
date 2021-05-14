@@ -16,7 +16,7 @@ from shutil import copyfile
 import sys
 
 # We need to use the first GPU for the generator and the second for NADS-Net
-os.environ["CUDA_VISIBLE_DEVICES"]="4,5"
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
 
 # Instantiate the Generator
 # We're not actually training, but running the generator can be facilitated by its trainer

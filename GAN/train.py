@@ -13,7 +13,7 @@ import sys
 torch.set_default_tensor_type(torch.FloatTensor)
 
 # We need to use the first GPU for the generator and the second for NADS-Net
-os.environ["CUDA_VISIBLE_DEVICES"]="4,5"
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
 
 # Get default training options
 opt = get_gan_options()

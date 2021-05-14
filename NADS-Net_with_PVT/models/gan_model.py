@@ -109,9 +109,9 @@ class GAN_Model(torch.nn.Module):
             keypoint_heatmap, PAFs, seatbelt_segmentation = self.NADS_Net(fake_image)
             keypoint_heatmap_label, PAFs_label, seatbelt_segmentation_label = self.NADS_Net(real_image)
 
-            G_losses['keypoint_heatmap_MSE_loss'] = MSE_criterion(keypoint_heatmap, keypoint_heatmap_label)*100
-            G_losses['PAF_MSE_loss'] = MSE_criterion(PAFs, PAFs_label)*100
-            G_losses['seatbelt_dice_BCE_loss'] = DiceBCE_criterion(seatbelt_segmentation.squeeze(), seatbelt_segmentation_label.squeeze())
+            G_losses['keypoint_heatmap_MSE_loss'] = MSE_criterion(keypoint_heatmap, keypoint_heatmap_label)*self.opt.lambda_keypoint
+            G_losses['PAF_MSE_loss'] = MSE_criterion(PAFs, PAFs_label)*self.opt.lambda_paf
+            G_losses['seatbelt_dice_BCE_loss'] = DiceBCE_criterion(seatbelt_segmentation.squeeze(), seatbelt_segmentation_label.squeeze())*self.opt.lambda_seatbelt
 
             pred_fake, pred_real = self.discriminate(
                 input_semantics, fake_image, real_image)
